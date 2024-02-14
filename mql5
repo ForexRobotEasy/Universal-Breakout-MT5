@@ -1,0 +1,93 @@
+
+//+------------------------------------------------------------------+
+//|                                            Universal Breakout MT5 |
+//|                     Copyright 2022, forexroboteasy.com           |
+//|                                        Forex Robot Easy Team      |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|              UNIVERSAL BREAKOUT MT5 TRADING ROBOT                 |
+//|                                                                  |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|                     CODE REQUIREMENTS & SPECIFICATIONS            |
+//|                                                                  |
+//+------------------------------------------------------------------+
+
+// Define input parameters
+input int BreakoutHour = 8;               // Hour to place pending orders
+input int PendingOrderExpiration = 4;     // Pending order expiration time in hours
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|                      REQUIRED TRADING FUNCTIONS                   |
+//|                                                                  |
+//+------------------------------------------------------------------+
+
+// Function to calculate price range over a specific time interval
+double CalculatePriceRange(int timeInterval)
+{
+   double maxPrice = 0;
+   double minPrice = 0;
+   
+   // Calculate maximum and minimum price within the time interval
+   for (int i = 0; i < timeInterval; i++)
+   {
+      double price = iHigh(NULL, 0, i) - iLow(NULL, 0, i);
+      
+      if (i == 0)
+      {
+         maxPrice = price;
+         minPrice = price;
+      }
+      else
+      {
+         if (price > maxPrice)
+            maxPrice = price;
+            
+         if (price < minPrice)
+            minPrice = price;
+      }
+   }
+   
+   return (maxPrice - minPrice);
+}
+
+// Function to place pending orders
+void PlacePendingOrders(double maxPrice, double minPrice)
+{
+   // Place BUYSTOP order at the level of maximum price
+   double buyStopPrice = NormalizeDouble(maxPrice, _Digits);
+   int ticketBuyStop = OrderSend(Symbol(), OP_BUYSTOP, 0.01, buyStopPrice, 0, 0, 0, '', 0, 0, Green);
+   
+   // Place SELLSTOP order at the level of minimum price
+   double sellStopPrice = NormalizeDouble(minPrice, _Digits);
+   int ticketSellStop = OrderSend(Symbol(), OP_SELLSTOP, 0.01, sellStopPrice, 0, 0, 0, '', 0, 0, Red);
+   
+   // Set pending order expiration time
+   int expirationTime = PendingOrderExpiration * 60 * 60;
+   OrderExpiration(ticketBuyStop, expirationTime);
+   OrderExpiration(ticketSellStop, expirationTime);
+}
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|                          MAIN PROGRAM                             |
+//|                                                                  |
+//+------------------------------------------------------------------+
+
+void OnTick()
+{
+   // Check if it's time to place pending orders
+   if (Hour() == BreakoutHour)
+   {
+      // Calculate price range over a specific time interval
+      double priceRange = CalculatePriceRange(24);
+      
+      // Place pending orders at the levels of maximum and minimum price
+      PlacePendingOrders(High[1] + priceRange, Low[1] - priceRange);
+   }
+}
